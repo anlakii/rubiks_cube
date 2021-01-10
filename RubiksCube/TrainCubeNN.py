@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 from tensorflow.keras.layers import Dense, Input, LeakyReLU
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
@@ -12,8 +11,9 @@ import multiprocessing
 import argparse
 import os
 
-from .utils import action_map_small, gen_seq, possible_actions_basic, chunker, \
+from .utils import action_map_small, gen_seq, possible_actions_basic, agg, \
     flatted_1d, generate_25, get_all_possible
+
 
 class TrainCubeNN:
     def __init__(self, **kwargs):
@@ -29,19 +29,16 @@ class TrainCubeNN:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    """
-    Creates a Keras model with the specified learning rate
-    """
     def get_model(self, lr=0.0001):
         input1 = Input((324,))
 
-        x = Dense(2048)(input1)
+        x = Dense(1024)(input1)
         x = LeakyReLU()(x)
-        x = Dense(2048)(x)
+        x = Dense(1024)(x)
         x = LeakyReLU()(x)
-        x = Dense(2048)(x)
+        x = Dense(1024)(x)
         x = LeakyReLU()(x)
-        x = Dense(100)(x)
+        x = Dense(50)(x)
         x = LeakyReLU()(x)
 
         out_value = Dense(1, activation="linear", name="value")(x)
@@ -64,22 +61,6 @@ class TrainCubeNN:
         train_file = None
         if self.train_path:
             train_file = open(self.train_path, "rb")
-
-        checkpoint = ModelCheckpoint(
-            file_path,
-            monitor='val_loss',
-            verbose=1,
-            save_best_only=True,
-            mode='min')
-
-        early = EarlyStopping(monitor="val_loss", mode="min", patience=1000)
-        reduce_on_plateau = ReduceLROnPlateau(
-            monitor="val_loss",
-            mode="min",
-            factor=0.1,
-            patience=50,
-            min_lr=1e-8)
-        callbacks_list = [checkpoint, early, reduce_on_plateau]
 
         lr = 0.0001
         model = self.get_model(lr=lr)
@@ -115,7 +96,8 @@ class TrainCubeNN:
 
                 if self.gen_data:
                     with open("train.dat", "ab+") as f:
-                        pickle.dump((cubes, dist_solved, c_next_reward, flat_next_states, cube_flat), f)
+                        pickle.dump(
+                            (cubes, dist_solved, c_next_reward, flat_next_states, cube_flat), f)
                     break
             else:
                 try:
@@ -139,7 +121,7 @@ class TrainCubeNN:
                 next_val, _ = model.predict(
                     np.array(flat_next_states), batch_size=1024, use_multiprocessing=True, workers=20)
                 next_val = next_val.ravel().tolist()
-                next_val = list(chunker(next_val, size=len(action_map_small)))
+                next_val = list(agg(next_val, size=len(action_map_small)))
 
                 for c, rewards, values in tqdm(
                         zip(cubes, c_next_reward, next_val)):
@@ -157,7 +139,8 @@ class TrainCubeNN:
                     sample_weights.size / np.sum(sample_weights)
 
                 x = np.array(cube_flat)
-                y = [np.array(target_val), np.array(target_pol)[..., np.newaxis]]
+                y = [np.array(target_val), np.array(
+                    target_pol)[..., np.newaxis]]
 
                 model.fit(
                     x,
@@ -187,6 +170,3 @@ def acc(y_true, y_pred):
     return K.cast(K.equal(K.max(y_true, axis=-1),
                           K.cast(K.argmax(y_pred, axis=-1), K.floatx())),
                   K.floatx())
-
-
-

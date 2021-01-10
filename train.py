@@ -36,6 +36,10 @@ if __name__ == "__main__":
         action='store_true')
 
     args = parser.parse_args()
-    
-    trainer = TrainCubeNN(model_path=args.model_path, n_samples=args.samples, n_epoch=args.epochs, gen_data=args.generate_data)
+
+    trainer = TrainCubeNN(
+        model_path=args.model_path,
+        n_samples=args.samples,
+        n_epoch=args.epochs,
+        gen_data=args.generate_data)
     trainer.run()

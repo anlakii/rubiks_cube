@@ -12,7 +12,13 @@ if __name__ == "__main__":
         help="path where the model will be stored",
         type=str,
         required=True)
+    parser.add_argument(
+        '--num-shuffles',
+        '-n',
+        help="number of actions to shuffle",
+        type=int,
+        default=10)
     args = parser.parse_args()
-    
-    solver = SolveCubeNN(args.model_path)
+
+    solver = SolveCubeNN(args.model_path, args.num_shuffles)
     solver.solve_random()

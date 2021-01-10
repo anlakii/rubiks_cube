@@ -3,6 +3,8 @@ import collections.abc
 """
 Utilities
 """
+
+
 class FrozenDict(collections.abc.Mapping):
     def __init__(self, *args, **kwargs):
         self._map = dict(*args, **kwargs)

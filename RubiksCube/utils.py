@@ -168,14 +168,18 @@ def possible_actions_basic(cube):
     return flat_cubes, rewards
 
 
-def chunker(seq, size):
+def agg(seq, size):
     return (seq[pos:pos + size] for pos in range(0, len(seq), size))
+
 
 """
 Generate a sequence with 25 turns
 """
+
+
 def gen_25(num):
     return gen_seq(25)
+
 
 def generate_data(N_SAMPLES):
     cubes = []
@@ -198,17 +202,21 @@ def generate_data(N_SAMPLES):
     return cubes, dist_solved, c_next_reward, flat_next_states, cube_flat
 
 
-
 """
 Get all possible cubes from all basic/simple actions
 """
+
+
 def get_all_possible(c):
     flat_cubes, rewards = possible_actions_basic(c)
     return rewards, flat_cubes, flatted_1d(c)
 
+
 """
 Generate a sequence with 25 turns
 """
+
+
 def generate_25(num):
     return gen_seq(25)
 
@@ -216,7 +224,8 @@ def generate_25(num):
 """
 Get all possible cubes from all basic/simple actions
 """
+
+
 def get_all_possible(c):
     flat_cubes, rewards = possible_actions_basic(c)
     return rewards, flat_cubes, flatted_1d(c)
-
