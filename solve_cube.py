@@ -13,7 +13,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from tqdm import tqdm
 
-from utils import action_map_small, gen_sequence, get_all_possible_actions_cube_small, chunker, \
+from utils import action_map_small, gen_seq, possible_actions_basic, chunker, \
     flatted_1d
 
 
@@ -42,7 +42,10 @@ def get_model(lr=0.0001):
     x1 = LeakyReLU()(x1)
 
     out_value = Dense(1, activation="linear", name="value")(x1)
-    out_policy = Dense(len(action_map_small), activation="softmax", name="policy")(x1)
+    out_policy = Dense(
+        len(action_map_small),
+        activation="softmax",
+        name="policy")(x1)
 
     model = Model(input1, [out_value, out_policy])
 
@@ -82,12 +85,15 @@ if __name__ == "__main__":
 
         for x, policy in zip(list_sequences, policy):
 
-            new_sequences = [x + [x[-1].copy()(action)] for action in action_map]
+            new_sequences = [x + [x[-1].copy()(action)]
+                             for action in action_map]
 
             pred = np.argsort(policy)
 
             cube_1 = x[-1].copy()(list(action_map.keys())[pred[-1]])
             cube_2 = x[-1].copy()(list(action_map.keys())[pred[-2]])
+
+            print(list(action_map.keys())[pred[-1]])
 
             new_list_sequences.append(x + [cube_1])
             new_list_sequences.append(x + [cube_2])
@@ -100,7 +106,7 @@ if __name__ == "__main__":
         for x, v in zip(new_list_sequences, value):
             x[-1].score = v if str(x[-1]) not in existing_cubes else -1
 
-        new_list_sequences.sort(key=lambda x: x[-1].score , reverse=True)
+        new_list_sequences.sort(key=lambda x: x[-1].score, reverse=True)
 
         #new_list_sequences = new_list_sequences[:100]
 
@@ -109,10 +115,11 @@ if __name__ == "__main__":
         list_sequences = new_list_sequences
 
         #list_sequences.sort(key=lambda x: get_perc_solved(x[-1]), reverse=True)
-        new_list_sequences.sort(key=lambda x: get_perc_solved(x[-1]), reverse=True)
+        new_list_sequences.sort(
+            key=lambda x: get_perc_solved(x[-1]), reverse=True)
 
         prec = get_perc_solved((new_list_sequences[0][-1]))
-        #print(list_sequences[0][-1])
+        # print(list_sequences[0][-1])
 
         print(prec)
 
