@@ -15,4 +15,4 @@ COPY . /opt/rubiks_cube
 WORKDIR /opt/rubiks_cube
 RUN mv pycuber/util.py /usr/local/lib/python3.6/dist-packages/pycuber/util.py
 
-ENTRYPOINT ["python3",  "adi_train.py"]
+ENTRYPOINT ["python3",  "TrainCubeNN.py"]

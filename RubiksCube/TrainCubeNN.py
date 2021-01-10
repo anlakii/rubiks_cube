@@ -13,7 +13,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.python.lib.io import file_io
 from tensorflow.python.client import device_lib
 
-from utils import action_map_small, gen_seq, possible_actions_basic, chunker, \
+from .utils import action_map_small, gen_seq, possible_actions_basic, chunker, \
     flatted_1d
 
 class TrainCubeNN:
@@ -64,7 +64,7 @@ class TrainCubeNN:
 
         train_file = None
         if self.train_path:
-            train_file = open(os.path.join(args.train_dir, 'train.dat'), "rb")
+            train_file = open(self.train_path, "rb")
 
         checkpoint = ModelCheckpoint(
             file_path,
@@ -114,7 +114,7 @@ class TrainCubeNN:
                         flat_next_states.extend(b)
                         cube_flat.append(c)
 
-                if args.generate_data:
+                if self.gen_data:
                     with open("train.dat", "ab+") as f:
                         pickle.dump((cubes, dist_solved, c_next_reward, flat_next_states, cube_flat), f)
                     break
@@ -173,7 +173,7 @@ class TrainCubeNN:
 
             model.save_weights(file_path)
 
-        if args.generate_data:
+        if self.gen_data:
             with tf.gfile.Open('train.dat', 'rb') as infile:
                 with file_io.FileIO(self.train_path, mode='wb+') as outfile:
                     outfile.write(infile.read())
@@ -205,39 +205,3 @@ def acc(y_true, y_pred):
                   K.floatx())
 
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train a rubik\'s cube model')
-    parser.add_argument(
-        '--epochs',
-        '-e',
-        help="num of epochs",
-        type=int, required=True)
-    parser.add_argument(
-        '--model-path',
-        '-m',
-        help="path where the model will be stored",
-        type=str,
-        required=True)
-    parser.add_argument(
-        '--samples',
-        '-s',
-        help="num of samples",
-        type=int,
-        default=100)
-    parser.add_argument(
-        '--train-dir',
-        '-t',
-        help="dir to train data",
-        type=str)
-    parser.add_argument(
-        '--generate-data',
-        '-g',
-        help="generate training data",
-        default=False,
-        action='store_true')
-
-    args = parser.parse_args()
-    
-    trainer = TrainCubeNN(model_path=args.model_path, n_samples=args.samples, n_epoch=args.epochs, gen_data=args.generate_data)
-    trainer.run()
