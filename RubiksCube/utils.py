@@ -205,3 +205,18 @@ Get all possible cubes from all basic/simple actions
 def get_all_possible(c):
     flat_cubes, rewards = possible_actions_basic(c)
     return rewards, flat_cubes, flatted_1d(c)
+
+"""
+Generate a sequence with 25 turns
+"""
+def generate_25(num):
+    return gen_seq(25)
+
+
+"""
+Get all possible cubes from all basic/simple actions
+"""
+def get_all_possible(c):
+    flat_cubes, rewards = possible_actions_basic(c)
+    return rewards, flat_cubes, flatted_1d(c)
+

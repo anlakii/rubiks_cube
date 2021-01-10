@@ -1,4 +1,10 @@
 import tensorflow as tf
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.layers import Dense, Input, LeakyReLU
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.python.lib.io import file_io
+from tensorflow.python.client import device_lib
 from keras import backend as K
 from tqdm import tqdm
 import numpy as np
@@ -6,15 +12,8 @@ import multiprocessing
 import argparse
 import os
 
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-from tensorflow.keras.layers import Dense, Input, LeakyReLU
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam
-from tensorflow.python.lib.io import file_io
-from tensorflow.python.client import device_lib
-
 from .utils import action_map_small, gen_seq, possible_actions_basic, chunker, \
-    flatted_1d
+    flatted_1d, generate_25, get_all_possible
 
 class TrainCubeNN:
     def __init__(self, **kwargs):
@@ -184,24 +183,10 @@ class TrainCubeNN:
                 outfile.write(infile.read())
 
 
-
-"""
-Generate a sequence with 25 turns
-"""
-def generate_25(num):
-    return gen_seq(25)
-
-
-"""
-Get all possible cubes from all basic/simple actions
-"""
-def get_all_possible(c):
-    flat_cubes, rewards = possible_actions_basic(c)
-    return rewards, flat_cubes, flatted_1d(c)
-
 def acc(y_true, y_pred):
     return K.cast(K.equal(K.max(y_true, axis=-1),
                           K.cast(K.argmax(y_pred, axis=-1), K.floatx())),
                   K.floatx())
+
 
 
