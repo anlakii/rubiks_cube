@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Dense, Input, LeakyReLU, Subtract
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 
-from utils import gen_sample, action_map, flatten_1d_b, inv_action_map, perc_solved_cube
+from utils import gen_sample, action_map, flatted_1d, inv_action_map, get_perc_solved
 import tensorflow.keras.backend as K
 import numpy as np
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
@@ -14,7 +14,7 @@ from tensorflow.keras.optimizers import Adam
 from tqdm import tqdm
 
 from utils import action_map_small, gen_sequence, get_all_possible_actions_cube_small, chunker, \
-    flatten_1d_b
+    flatted_1d
 
 
 def acc(y_true, y_pred):
@@ -67,14 +67,14 @@ if __name__ == "__main__":
     list_sequences = [[cube]]
     print("--- Generated cube ---")
     print(list_sequences[0][-1])
-    print(perc_solved_cube((list_sequences[0][-1])))
+    print(get_perc_solved((list_sequences[0][-1])))
     print("--- Generated cube ---")
 
     existing_cubes = set()
 
     for j in range(1000):
 
-        X = [flatten_1d_b(x[-1]) for x in list_sequences]
+        X = [flatted_1d(x[-1]) for x in list_sequences]
 
         value, policy = model.predict(np.array(X), batch_size=1024)
 
@@ -93,7 +93,7 @@ if __name__ == "__main__":
             new_list_sequences.append(x + [cube_2])
 
         print("new_list_sequences", len(new_list_sequences))
-        last_states_flat = [flatten_1d_b(x[-1]) for x in new_list_sequences]
+        last_states_flat = [flatted_1d(x[-1]) for x in new_list_sequences]
         value, _ = model.predict(np.array(last_states_flat), batch_size=1024)
         value = value.ravel().tolist()
 
@@ -108,10 +108,10 @@ if __name__ == "__main__":
 
         list_sequences = new_list_sequences
 
-        #list_sequences.sort(key=lambda x: perc_solved_cube(x[-1]), reverse=True)
-        new_list_sequences.sort(key=lambda x: perc_solved_cube(x[-1]), reverse=True)
+        #list_sequences.sort(key=lambda x: get_perc_solved(x[-1]), reverse=True)
+        new_list_sequences.sort(key=lambda x: get_perc_solved(x[-1]), reverse=True)
 
-        prec = perc_solved_cube((new_list_sequences[0][-1]))
+        prec = get_perc_solved((new_list_sequences[0][-1]))
         #print(list_sequences[0][-1])
 
         print(prec)
@@ -119,9 +119,9 @@ if __name__ == "__main__":
         if prec == 1:
             break
 
-    print(perc_solved_cube(list_sequences[0][-1]))
+    print(get_perc_solved(list_sequences[0][-1]))
     for seq in list_sequences:
         print(seq[-1])
-        print(perc_solved_cube((seq[-1])))
+        print(get_perc_solved((seq[-1])))
 
     print(list_sequences[0][-1])

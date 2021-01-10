@@ -26,7 +26,7 @@ def flatten(cube):
     return flat
 
 
-def flatten_1d_b(cube):
+def flatted_1d(cube):
     sides = [cube.F, cube.B, cube.U, cube.D, cube.L, cube.R]
     flat = []
     for x in sides:
@@ -50,7 +50,7 @@ def order(data):
     return max(probs)
 
 
-def perc_solved_cube(cube):
+def get_perc_solved(cube):
     flat = flatten(cube)
     perc_side = [order(flat[i:(i + 9)]) for i in range(0, 9 * 6, 9)]
     return np.mean(perc_side)
@@ -72,7 +72,7 @@ def gen_sample(n_steps=6):
     cubes = []
 
     for s in my_formula:
-        sample_X.append(flatten_1d_b(cube))
+        sample_X.append(flatted_1d(cube))
         sample_Y.append(action_map[s.name])
         cubes.append(cube.copy())
         cube(s.name)
@@ -80,7 +80,7 @@ def gen_sample(n_steps=6):
     return sample_X, sample_Y, cubes
 
 
-def gen_sample_small(n_steps=6):
+def gen_sample_basic(n_steps=6):
     cube = pc.Cube()
 
     transformation = [choice(list(action_map_small.keys())) for _ in range(n_steps)]
@@ -96,7 +96,7 @@ def gen_sample_small(n_steps=6):
     cubes = []
 
     for s in my_formula:
-        sample_X.append(flatten_1d_b(cube))
+        sample_X.append(flatted_1d(cube))
         sample_Y.append(action_map[s.name])
         cubes.append(cube.copy())
         cube(s.name)
@@ -136,8 +136,8 @@ def get_all_possible_actions_cube_small(cube):
         cube_copy = cube.copy()
         cube_copy = cube_copy(a)
 
-        flat_cubes.append(flatten_1d_b(cube_copy))
-        rewards.append(2*int(perc_solved_cube(cube_copy)>0.99)-1)
+        flat_cubes.append(flatted_1d(cube_copy))
+        rewards.append(2*int(get_perc_solved(cube_copy)>0.99)-1)
 
     return flat_cubes, rewards
 

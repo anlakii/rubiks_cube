@@ -16,16 +16,23 @@ from tqdm import tqdm
 import argparse
 
 from utils import action_map_small, gen_sequence, get_all_possible_actions_cube_small, chunker, \
-    flatten_1d_b
+    flatted_1d
+
+def generate_25(num):
+    return gen_sequence(25)
+
+def get_all_possible(c):
+    flat_cubes, rewards = get_all_possible_actions_cube_small(c)
+    return rewards, flat_cubes, flatted_1d(c)
 
 
-def get_all_possible_loop(cubes, start, end, cube_next_reward, flat_next_states, cube_flat):
+def get_all_possible_loop(cubes, start, end, c_next_reward, flat_next_states, cube_flat):
     for i in range(start, end):
         c = cubes[i]
         flat_cubes, rewards = get_all_possible_actions_cube_small(c)
-        cube_next_reward.append(rewards)
+        c_next_reward.append(rewards)
         flat_next_states.extend(flat_cubes)
-        cube_flat.append(flatten_1d_b(c))
+        cube_flat.append(flatted_1d(c))
 
 
 def acc(y_true, y_pred):
@@ -36,25 +43,26 @@ def acc(y_true, y_pred):
 def get_model(lr=0.0001):
     input1 = Input((324,))
 
+    # Densly connected NN layer
     d1 = Dense(1024)
     d2 = Dense(1024)
     d3 = Dense(1024)
 
     d4 = Dense(50)
 
-    x1 = d1(input1)
-    x1 = LeakyReLU()(x1)
-    x1 = d2(x1)
-    x1 = LeakyReLU()(x1)
-    x1 = d3(x1)
-    x1 = LeakyReLU()(x1)
-    x1 = d4(x1)
-    x1 = LeakyReLU()(x1)
+    x = d1(input1)
+    x = LeakyReLU()(x)
+    x = d2(x)
+    x = LeakyReLU()(x)
+    x = d3(x)
+    x = LeakyReLU()(x)
+    x = d4(x)
+    x = LeakyReLU()(x)
 
-    out_value = Dense(1, activation="linear", name="value")(x1)
-    out_policy = Dense(len(action_map_small), activation="softmax", name="policy")(x1)
+    out_value = Dense(1, activation="linear", name="value")(x)
+    out_pol = Dense(len(action_map_small), activation="softmax", name="policy")(x)
 
-    model = Model(input1, [out_value, out_policy])
+    model = Model(input1, [out_value, out_pol])
 
     model.compile(loss={"value": "mae", "policy": "sparse_categorical_crossentropy"}, optimizer=Adam(lr),
                   metrics={"policy": acc})
@@ -63,32 +71,27 @@ def get_model(lr=0.0001):
     return model
 
 
-if __name__ == "__main__":
-    
+def main():
     parser = argparse.ArgumentParser(description='Train a rubik\'s cube model')
     parser.add_argument('--epochs', '-e', help="num of epochs", type=int, required=True)
     parser.add_argument('--model-dir', '-m', help="dir to store model to", type=str)
-
+    parser.add_argument('--samples', '-s', help="num of samples", type=int, default=100)
     args = parser.parse_args()
     manager = multiprocessing.Manager()
 
     tf.compat.v1.enable_eager_execution()
-
     print(device_lib.list_local_devices())
     print(K.tensorflow_backend._get_available_gpus())
 
-    N_SAMPLES = 100
+    N_SAMPLES = args.samples
     N_EPOCH = args.epochs
 
     file_path = 'auto.h5'
     final_path = os.path.join(args.model_dir, 'auto.h5')
 
     checkpoint = ModelCheckpoint(file_path, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
-
     early = EarlyStopping(monitor="val_loss", mode="min", patience=1000)
-
     reduce_on_plateau = ReduceLROnPlateau(monitor="val_loss", mode="min", factor=0.1, patience=50, min_lr=1e-8)
-
     callbacks_list = [checkpoint, early, reduce_on_plateau]
 
     lr = 0.0001
@@ -104,80 +107,48 @@ if __name__ == "__main__":
 
 
     for i in range(N_EPOCH):
-        cubes = manager.list()
-        distance_to_solved = []
-        for j in tqdm(range(N_SAMPLES)):
-            _cubes, _distance_to_solved = gen_sequence(25)
-            cubes.extend(_cubes)
-            distance_to_solved.extend(_distance_to_solved)
+        cubes = []
+        dist_solved = []
 
-        
-        cube_next_reward = manager.list()
-        flat_next_states = manager.list()
-        cube_flat = manager.list
+        c_next_reward = []
+        flat_next_states = []
+        cube_flat = []
 
+        with multiprocessing.Pool() as pool:
+            for _cubes, _dist_solved, in tqdm(pool.imap(generate_25, range(N_SAMPLES))):
+                cubes.extend(_cubes)
+                dist_solved.extend(_dist_solved)
 
-        procs = []
-        print("STARTING PROCESSES")
-
-        cpus = multiprocessing.cpu_count()
-
-        total = len(cubes)
-        for i in range(cpus):
-            proc = None
-            if i + 1 == cpus:
-                proc = multiprocessing.Process(target=get_all_possible_loop, args=(cubes, i * total // cpus, total, cube_next_reward, flat_next_states, cube_flat))
-            else:
-                proc = multiprocessing.Process(target=get_all_possible_loop, args=(cubes, i * total // cpus, (i + 1) * total // cpus, cube_next_reward, flat_next_states, cube_flat))
-            proc.start()
-            procs.append(proc)
-
-        for p in procs:
-            p.join()
-
-            
-
-        print("JOINING THREADS")
-
-        for t in threads:
-            t.join()
-
-        print("DONE")
-
-
+            for a, b, c in tqdm(pool.imap(get_all_possible, cubes)):
+                c_next_reward.append(a)
+                flat_next_states.extend(b)
+                cube_flat.append(c)
 
         for _ in range(20):
 
-            cube_target_value = []
-            cube_target_policy = []
+            target_val = []
+            target_pol = []
 
-            next_state_value, _ = model.predict(np.array(flat_next_states), batch_size=1024, use_multiprocessing=True, workers=20)
-            next_state_value = next_state_value.ravel().tolist()
-            next_state_value = list(chunker(next_state_value, size=len(action_map_small)))
+            next_val, _ = model.predict(np.array(flat_next_states), batch_size=1024, use_multiprocessing=True, workers=20)
+            next_val = next_val.ravel().tolist()
+            next_val = list(chunker(next_val, size=len(action_map_small)))
 
-            print("This takes a lot of time...")
-            for c, rewards, values in tqdm(zip(cubes, cube_next_reward, next_state_value)):
-                r_plus_v = 0.4*np.array(rewards) + np.array(values)
-                target_v = np.max(r_plus_v)
-                target_p = np.argmax(r_plus_v)
-                cube_target_value.append(target_v)
-                cube_target_policy.append(target_p)
+            for c, rewards, values in tqdm(zip(cubes, c_next_reward, next_val)):
+                reward_values = 0.4*np.array(rewards) + np.array(values)
+                target_v = np.max(reward_values)
+                target_p = np.argmax(reward_values)
+                target_val.append(target_v)
+                target_pol.append(target_p)
 
+            target_val = (target_val-np.mean(target_val))/(np.std(target_val)+0.01)
 
-            cube_target_value = (cube_target_value-np.mean(cube_target_value))/(np.std(cube_target_value)+0.01)
-
-            #print(cube_target_policy[-30:])
-            #print(cube_target_value[-30:])
-
-            sample_weights = 1. / np.array(distance_to_solved)
+            sample_weights = 1. / np.array(dist_solved)
             sample_weights = sample_weights * sample_weights.size / np.sum(sample_weights)
 
             x = np.array(cube_flat)
-            y = [np.array(cube_target_value), np.array(cube_target_policy)[..., np.newaxis]]
-            print(f"size x: {x.size}")
-            print(f"size y: {y[0].size}, {y[1].size}")
+            y = [np.array(target_val), np.array(target_pol)[..., np.newaxis]]
+
             model.fit(x, y, epochs=1, batch_size=128, sample_weight=[sample_weights, sample_weights])
-            # sample_weight=[sample_weights, sample_weights],
 
         print(f'Epoch: {i}')
 
@@ -186,3 +157,7 @@ if __name__ == "__main__":
     with tf.gfile.Open(final_path, 'wb+') as outfile:
         with file_io.FileIO(file_path, mode='rb') as infile:
             outfile.write(infile.read())
+
+
+if __name__ == "__main__":
+    main()

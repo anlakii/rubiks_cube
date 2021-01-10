@@ -13,5 +13,6 @@ RUN pip3 install h5py==2.10.0
 
 COPY . /opt/rubiks_cube
 WORKDIR /opt/rubiks_cube
+RUN mv pycuber/util.py /usr/local/lib/python3.6/dist-packages/pycuber/util.py
 
 ENTRYPOINT ["python3",  "autodidactic_iter.py"]
